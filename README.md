@@ -47,18 +47,18 @@ Das Plugin bildet das perfekte Gegenstück zum [LoxBerry-Plugin-PanasonicTV](htt
 | `harmankardon/status/daemon` | `online` / `offline` | Status des Hintergrunddienstes (LWT) |
 | `harmankardon/status/json` | JSON Object | Gesamter Zustand für Miniserver JSON-Parser |
 
-### Befehle (an das Plugin gesendet)
+### Befehle (an das Plugin gesendet via MQTT)
 
-| Topic | Werte | Funktion |
+| Topic | Mögliche Werte / Payloads | Funktion / Details |
 |---|---|---|
-| `harmankardon/set/power` | `ON`, `OFF`, `TOGGLE`, `SLEEP` | Einschalten (inkl. WOL), Ausschalten oder Standby |
-| `harmankardon/set/volume` | `UP`, `DOWN`, `+5`, `-5`, `0-100` | Lautstärke schrittweise oder absolut anpassen |
-| `harmankardon/set/mute` | `true`, `false`, `toggle` | Stummschaltung ein-/ausschalten |
-| `harmankardon/set/source` | `TV`, `Game`, `Radio`, `Disc`, `AUX`, etc. | Eingangsquelle umschalten |
-| `harmankardon/set/key` | `up`, `down`, `left`, `right`, `ok`, `back`, `home`, `info`, `options`, `play`, `pause` | Beliebige Fernbedienungstaste |
-| `harmankardon/set/wol` | `1` | Sendet Wake-on-LAN Magic Packet |
-| `harmankardon/set/zone` | `Main Zone`, `Zone 2` | Zielzone wechseln |
-| `harmankardon/set/heartbeat` | `1` | Sendet sofortiges Heartbeat-Keepalive |
+| `harmankardon/set/power` | `ON`, `OFF`, `TOGGLE`, `SLEEP` | **Power-Steuerung:** Bei `ON` wird (falls der Receiver im Standby ist) automatisch vorher ein WOL-Magic-Packet gesendet, um das LAN-Interface aufzuwecken. |
+| `harmankardon/set/volume` | `UP`, `DOWN`, `+1`, `-1`, `+5`, `-5`, `0-100` | **Lautstärkeregelung:** Entweder relative Einzelschritte (`UP`, `DOWN`), Mehrfachschritte (`+5`, `-5`) oder direkte absolute Zielwerte (z. B. `35`). |
+| `harmankardon/set/mute` | `toggle`, `true`, `false`, `1`, `0` | **Stummschaltung:** `toggle` wechselt den Zustand; `true` / `1` aktiviert Stumm; `false` / `0` hebt Stummschaltung auf. |
+| `harmankardon/set/source` | `TV`, `Game`, `Radio`, `Disc`, `AUX`, `Cable Sat`, `DVR`, `Media Server`, etc. | **Eingangsquelle:** Schaltet den AV-Receiver auf den angegebenen Eingang um. |
+| `harmankardon/set/key` | `up`, `down`, `left`, `right`, `ok`, `back`, `home`, `options`, `info`, `play`, `pause`, `previous`, `next`, `forward`, `reverse` | **Tastenbefehle:** Simuliert Tastendrücke der Fernbedienung (D-Pad Navigation, Menüs, Playback-Steuerung). |
+| `harmankardon/set/wol` | `1` | **Wake-on-LAN:** Sendet ein Magic Packet an die konfigurierte MAC-Adresse (Ports 9 und 7). |
+| `harmankardon/set/zone` | `Main Zone`, `Zone 2` | **Zonenauswahl:** Wechselt die Zielzone für nachfolgende Steuerbefehle. |
+| `harmankardon/set/heartbeat` | `1` | **Keepalive:** Sendet sofort einen Keepalive-Ping (`heart-alive`) an den Receiver. |
 
 ---
 
@@ -67,22 +67,55 @@ Das Plugin bildet das perfekte Gegenstück zum [LoxBerry-Plugin-PanasonicTV](htt
 ### 1. Status im Miniserver empfangen (Virtuelle Eingänge)
 
 1. Im LoxBerry das **MQTT Gateway** aktivieren.
-2. In der **Loxone Config** einen **Virtuellen Texteingang** anlegen:
-   * Name: `AVR Power`
-   * Verbindung / MQTT Topic: `harmankardon/status/power`
-3. Für die Eingangsquelle einen weiteren Virtuellen Texteingang:
-   * Name: `AVR Quelle`
-   * MQTT Topic: `harmankardon/status/source`
+2. In der **Loxone Config** Virtuelle Eingänge anlegen:
+   * **Power-Status (Digital/Text):**
+     * Name: `AVR Power`
+     * Verbindung / MQTT Topic: `harmankardon/status/power`
+   * **Aktive Eingangsquelle (Text):**
+     * Name: `AVR Quelle`
+     * Verbindung / MQTT Topic: `harmankardon/status/source`
+   * **Lautstärke (Analog):**
+     * Name: `AVR Lautstaerke`
+     * Verbindung / MQTT Topic: `harmankardon/status/volume`
+   * **Stumm / Mute (Digital):**
+     * Name: `AVR Mute`
+     * Verbindung / MQTT Topic: `harmankardon/status/mute`
+   * **Online / Erreichbar (Digital):**
+     * Name: `AVR Online`
+     * Verbindung / MQTT Topic: `harmankardon/status/online`
 
 ### 2. Befehle an den Receiver senden (Virtuelle Ausgänge)
 
-1. Einen **Virtuellen Ausgang** anlegen:
-   * Adresse: `http://localhost:1883` (bzw. MQTT Gateway des LoxBerry)
+1. Im Loxone Miniserver einen **Virtuellen Ausgang** für MQTT anlegen (falls noch nicht vorhanden):
+   * Adresse: `http://localhost:1883` (bzw. IP deines LoxBerry)
 2. **Virtuelle Ausgangsbefehle** anlegen:
+   * **Receiver Ein:**
+     * Topic: `harmankardon/set/power`
+     * Befehl bei EIN: `ON`
+   * **Receiver Aus:**
+     * Topic: `harmankardon/set/power`
+     * Befehl bei EIN: `OFF`
    * **Power Toggle:**
      * Topic: `harmankardon/set/power`
      * Befehl bei EIN: `TOGGLE`
    * **Quelle TV (Heimkino):**
+     * Topic: `harmankardon/set/source`
+     * Befehl bei EIN: `TV`
+   * **Quelle Game / Konsole:**
+     * Topic: `harmankardon/set/source`
+     * Befehl bei EIN: `Game`
+   * **Quelle Radio:**
+     * Topic: `harmankardon/set/source`
+     * Befehl bei EIN: `Radio`
+   * **Lauter (+5 Schritte):**
+     * Topic: `harmankardon/set/volume`
+     * Befehl bei EIN: `+5`
+   * **Leiser (-5 Schritte):**
+     * Topic: `harmankardon/set/volume`
+     * Befehl bei EIN: `-5`
+   * **Stumm umschalten (Toggle):**
+     * Topic: `harmankardon/set/mute`
+     * Befehl bei EIN: `toggle`
      * Topic: `harmankardon/set/source`
      * Befehl bei EIN: `TV`
    * **Lauter (+5):**

@@ -189,6 +189,16 @@ switch ($action) {
         echo json_encode($res);
         break;
 
+    case 'zone':
+        $zone = isset($_REQUEST['zone']) ? trim($_REQUEST['zone']) : (isset($_REQUEST['cmd']) ? trim($_REQUEST['cmd']) : 'Main Zone');
+        $cfg_file = get_plugin_config_file();
+        $curr = file_exists($cfg_file) ? json_decode(file_get_contents($cfg_file), true) : [];
+        if (!is_array($curr)) $curr = [];
+        $curr['receiver']['zone'] = $zone;
+        file_put_contents($cfg_file, json_encode($curr, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+        echo json_encode(['success' => true, 'zone' => $zone]);
+        break;
+
     case 'wol':
         $res = run_control_cli("--wol");
         echo json_encode($res);

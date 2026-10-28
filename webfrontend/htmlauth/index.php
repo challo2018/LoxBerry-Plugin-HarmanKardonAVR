@@ -74,9 +74,13 @@ $navbar[1]['Name']   = __t('RECEIVER.SECTION_TITLE', 'Einstellungen & Steuerung'
 $navbar[1]['URL']    = 'index.php?form=main';
 $navbar[1]['active'] = ($form === 'main');
 
-$navbar[2]['Name']   = __t('LOGGING.SECTION_TITLE', 'Logdatei & Diagnose');
-$navbar[2]['URL']    = 'index.php?form=logs';
-$navbar[2]['active'] = ($form === 'logs');
+$navbar[2]['Name']   = __t('MQTT_HELP.SECTION_TITLE', 'MQTT Befehle (SET) & Loxone');
+$navbar[2]['URL']    = 'index.php?form=mqtt';
+$navbar[2]['active'] = ($form === 'mqtt');
+
+$navbar[3]['Name']   = __t('LOGGING.SECTION_TITLE', 'Logdatei & Diagnose');
+$navbar[3]['URL']    = 'index.php?form=logs';
+$navbar[3]['active'] = ($form === 'logs');
 
 // Render LoxBerry Header
 $template_title = __t('COMMON.PLUGIN_TITLE', 'Harman Kardon AVR');
@@ -84,6 +88,376 @@ $helplink = "https://wiki.loxberry.de/";
 $helptemplate = "help.html";
 
 LBWeb::lbheader($template_title, $helplink, $helptemplate, true);
+
+if ($form === 'mqtt') {
+    ?>
+    <div class="lb-content">
+        <style>
+        .card-box {
+            background: #ffffff;
+            border: 1px solid #dcdde1;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 22px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+        }
+        .card-header-bar {
+            border-bottom: 2px solid #f1f2f6;
+            padding-bottom: 12px;
+            margin-bottom: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .card-header-bar h2 {
+            margin: 0;
+            font-size: 1.25rem;
+            color: #2f3640;
+        }
+        .mqtt-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.92rem;
+            margin-bottom: 15px;
+        }
+        .mqtt-table th, .mqtt-table td {
+            padding: 10px 14px;
+            text-align: left;
+            border-bottom: 1px solid #edf0f2;
+        }
+        .mqtt-table th {
+            background: #f8f9fa;
+            color: #4b6584;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.8rem;
+            letter-spacing: 0.5px;
+        }
+        .mqtt-table tr:hover {
+            background: #fcfcfc;
+        }
+        .code-topic {
+            font-family: monospace, Consolas, Courier;
+            font-weight: 600;
+            color: #0984e3;
+            background: #ebf5fb;
+            padding: 3px 7px;
+            border-radius: 4px;
+            font-size: 0.88rem;
+        }
+        .code-payload {
+            font-family: monospace, Consolas, Courier;
+            background: #f1f2f6;
+            color: #2f3542;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+        }
+        .btn-test {
+            background: #007aff;
+            color: #ffffff;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .btn-test:hover {
+            background: #0056b3;
+        }
+        .info-callout {
+            background: #e8f4fd;
+            border-left: 4px solid #007aff;
+            padding: 14px 18px;
+            border-radius: 0 6px 6px 0;
+            margin-bottom: 20px;
+            font-size: 0.92rem;
+            color: #1e3799;
+        }
+        .toast-msg {
+            display: none;
+            position: fixed;
+            bottom: 25px;
+            right: 25px;
+            background: #2ed573;
+            color: #fff;
+            padding: 14px 22px;
+            border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 9999;
+            font-weight: 600;
+        }
+        </style>
+
+        <div id="toastMessage" class="toast-msg"></div>
+
+        <div class="info-callout">
+            <strong>MQTT Präfix:</strong> Aktuell ist für deinen Receiver das Präfix <span class="code-topic"><?php echo htmlspecialchars($mqtt_topic_prefix); ?></span> konfiguriert.
+            Alle nachfolgenden Topics sind mit diesem Präfix einsatzbereit für die Loxone Config.
+        </div>
+
+        <!-- SET Befehle -->
+        <div class="card-box">
+            <div class="card-header-bar">
+                <h2>📥 MQTT SET-Befehle (Befehle an den Receiver senden)</h2>
+            </div>
+            <p style="font-size: 0.9rem; color: #576574; margin-top: 0;">
+                Sende diese Befehle über einen <strong>Virtuellen Ausgangsbefehl</strong> im Loxone Miniserver an das LoxBerry MQTT Gateway:
+            </p>
+
+            <table class="mqtt-table">
+                <thead>
+                    <tr>
+                        <th style="width: 28%;"><?php echo __t('MQTT_HELP.COL_TOPIC', 'MQTT Topic'); ?></th>
+                        <th style="width: 25%;"><?php echo __t('MQTT_HELP.COL_VALUES', 'Werte / Payloads'); ?></th>
+                        <th><?php echo __t('MQTT_HELP.COL_DESC', 'Funktion / Beschreibung'); ?></th>
+                        <th style="width: 80px; text-align: center;"><?php echo __t('MQTT_HELP.COL_ACTION', 'Test'); ?></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><span class="code-topic"><?php echo htmlspecialchars($mqtt_topic_prefix); ?>/set/power</span></td>
+                        <td>
+                            <span class="code-payload">ON</span>, <span class="code-payload">OFF</span>, <span class="code-payload">TOGGLE</span>, <span class="code-payload">SLEEP</span>
+                        </td>
+                        <td>
+                            Schaltet den Receiver ein (sendet bei Bedarf automatisch ein WOL-Paket), aus oder versetzt ihn in Standby/Sleep.
+                        </td>
+                        <td style="text-align: center;">
+                            <button type="button" class="btn-test" onclick="testMqtt('power', 'toggle')">Toggle</button>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><span class="code-topic"><?php echo htmlspecialchars($mqtt_topic_prefix); ?>/set/volume</span></td>
+                        <td>
+                            <span class="code-payload">UP</span>, <span class="code-payload">DOWN</span>, <span class="code-payload">+5</span>, <span class="code-payload">-5</span>, <span class="code-payload">0-100</span>
+                        </td>
+                        <td>
+                            Lautstärkeregelung. Unterstützt relative Schritte (<span class="code-payload">UP</span>, <span class="code-payload">+1</span>, <span class="code-payload">+5</span>, <span class="code-payload">-5</span>) oder absolute Zielwerte (z.B. <span class="code-payload">35</span>).
+                        </td>
+                        <td style="text-align: center;">
+                            <button type="button" class="btn-test" onclick="testMqtt('volume', 'up')">Vol +</button>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><span class="code-topic"><?php echo htmlspecialchars($mqtt_topic_prefix); ?>/set/mute</span></td>
+                        <td>
+                            <span class="code-payload">toggle</span>, <span class="code-payload">true</span>, <span class="code-payload">false</span>, <span class="code-payload">1</span>, <span class="code-payload">0</span>
+                        </td>
+                        <td>
+                            Stummschaltung umschalten (<span class="code-payload">toggle</span>) oder gezielt aktivieren bzw. deaktivieren.
+                        </td>
+                        <td style="text-align: center;">
+                            <button type="button" class="btn-test" onclick="testMqtt('mute', 'toggle')">Mute</button>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><span class="code-topic"><?php echo htmlspecialchars($mqtt_topic_prefix); ?>/set/source</span></td>
+                        <td>
+                            <span class="code-payload">TV</span>, <span class="code-payload">Game</span>, <span class="code-payload">Radio</span>, <span class="code-payload">Disc</span>, <span class="code-payload">AUX</span>, <span class="code-payload">Cable Sat</span>, <span class="code-payload">Media Server</span>
+                        </td>
+                        <td>
+                            Schaltet die aktive Eingangsquelle des Receivers um. Entspricht der Quellenanzeige auf dem Receiver.
+                        </td>
+                        <td style="text-align: center;">
+                            <button type="button" class="btn-test" onclick="testMqtt('source', 'TV')">TV</button>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><span class="code-topic"><?php echo htmlspecialchars($mqtt_topic_prefix); ?>/set/key</span></td>
+                        <td>
+                            <span class="code-payload">up</span>, <span class="code-payload">down</span>, <span class="code-payload">left</span>, <span class="code-payload">right</span>, <span class="code-payload">ok</span>, <span class="code-payload">back</span>, <span class="code-payload">home</span>, <span class="code-payload">options</span>, <span class="code-payload">info</span>, <span class="code-payload">play</span>, <span class="code-payload">pause</span>, <span class="code-payload">previous</span>, <span class="code-payload">next</span>
+                        </td>
+                        <td>
+                            Sendet einen Tastenbefehl der Fernbedienung (z.B. D-Pad Steuerkreuz, Menütasten oder Audiowiedergabe).
+                        </td>
+                        <td style="text-align: center;">
+                            <button type="button" class="btn-test" onclick="testMqtt('key', 'info')">Info</button>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><span class="code-topic"><?php echo htmlspecialchars($mqtt_topic_prefix); ?>/set/wol</span></td>
+                        <td>
+                            <span class="code-payload">1</span>
+                        </td>
+                        <td>
+                            Sendet direkt ein Wake-on-LAN Magic Packet an die konfigurierte MAC-Adresse des Receivers.
+                        </td>
+                        <td style="text-align: center;">
+                            <button type="button" class="btn-test" onclick="testWol()">WOL</button>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><span class="code-topic"><?php echo htmlspecialchars($mqtt_topic_prefix); ?>/set/zone</span></td>
+                        <td>
+                            <span class="code-payload">Main Zone</span>, <span class="code-payload">Zone 2</span>
+                        </td>
+                        <td>
+                            Wechselt die aktive Zielzone für anschließende Steuerbefehle.
+                        </td>
+                        <td style="text-align: center;">
+                            <button type="button" class="btn-test" onclick="testMqtt('zone', 'Main Zone')">Zone</button>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><span class="code-topic"><?php echo htmlspecialchars($mqtt_topic_prefix); ?>/set/heartbeat</span></td>
+                        <td>
+                            <span class="code-payload">1</span>
+                        </td>
+                        <td>
+                            Sendet manuell einen Keepalive-Heartbeat (<span class="code-payload">heart-alive</span>) an den Receiver.
+                        </td>
+                        <td style="text-align: center;">
+                            <button type="button" class="btn-test" onclick="testHeartbeat()">Ping</button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- STATUS Rückmeldungen -->
+        <div class="card-box">
+            <div class="card-header-bar">
+                <h2>📤 MQTT STATUS-Topics (Rückmeldungen vom Receiver)</h2>
+            </div>
+            <p style="font-size: 0.9rem; color: #576574; margin-top: 0;">
+                Diese Topics werden vom Plugin automatisch veröffentlicht und können in Loxone über <strong>Virtuelle Eingänge</strong> erfasst werden:
+            </p>
+
+            <table class="mqtt-table">
+                <thead>
+                    <tr>
+                        <th style="width: 28%;"><?php echo __t('MQTT_HELP.COL_TOPIC', 'MQTT Topic'); ?></th>
+                        <th style="width: 25%;">Datentyp / Werte</th>
+                        <th>Bedeutung / Verwendung im Miniserver</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><span class="code-topic"><?php echo htmlspecialchars($mqtt_topic_prefix); ?>/status/online</span></td>
+                        <td><span class="code-payload">true</span> / <span class="code-payload">false</span></td>
+                        <td>Gibt an, ob der Receiver im Netzwerk erreichbar ist (digitaler Virtueller Eingang).</td>
+                    </tr>
+                    <tr>
+                        <td><span class="code-topic"><?php echo htmlspecialchars($mqtt_topic_prefix); ?>/status/power</span></td>
+                        <td><span class="code-payload">ON</span> / <span class="code-payload">OFF</span> / <span class="code-payload">STANDBY</span></td>
+                        <td>Einschaltzustand des Receivers (virtueller Texteingang).</td>
+                    </tr>
+                    <tr>
+                        <td><span class="code-topic"><?php echo htmlspecialchars($mqtt_topic_prefix); ?>/status/volume</span></td>
+                        <td><span class="code-payload">0</span> – <span class="code-payload">100</span></td>
+                        <td>Aktueller geschätzter Lautstärkepegel (analoger Virtueller Eingang).</td>
+                    </tr>
+                    <tr>
+                        <td><span class="code-topic"><?php echo htmlspecialchars($mqtt_topic_prefix); ?>/status/mute</span></td>
+                        <td><span class="code-payload">true</span> / <span class="code-payload">false</span></td>
+                        <td>Stummschaltungszustand aktiv oder inaktiv (digitaler Virtueller Eingang).</td>
+                    </tr>
+                    <tr>
+                        <td><span class="code-topic"><?php echo htmlspecialchars($mqtt_topic_prefix); ?>/status/source</span></td>
+                        <td>Text (z.B. <span class="code-payload">TV</span>, <span class="code-payload">Game</span>)</td>
+                        <td>Name der aktuell gewählten Eingangsquelle (virtueller Texteingang).</td>
+                    </tr>
+                    <tr>
+                        <td><span class="code-topic"><?php echo htmlspecialchars($mqtt_topic_prefix); ?>/status/zone</span></td>
+                        <td><span class="code-payload">Main Zone</span> / <span class="code-payload">Zone 2</span></td>
+                        <td>Aktuell ausgewählte Zone.</td>
+                    </tr>
+                    <tr>
+                        <td><span class="code-topic"><?php echo htmlspecialchars($mqtt_topic_prefix); ?>/status/daemon</span></td>
+                        <td><span class="code-payload">online</span> / <span class="code-payload">offline</span></td>
+                        <td>Status des Hintergrunddienstes auf dem LoxBerry (MQTT Last Will).</td>
+                    </tr>
+                    <tr>
+                        <td><span class="code-topic"><?php echo htmlspecialchars($mqtt_topic_prefix); ?>/status/json</span></td>
+                        <td>JSON Object</td>
+                        <td>Gesamter Gerätestatus als komprimiertes JSON für den Loxone JSON-Parser.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Loxone Config Schnell-Anleitung -->
+        <div class="card-box">
+            <div class="card-header-bar">
+                <h2>🏠 Schnell-Anleitung: Loxone Config Einbindung</h2>
+            </div>
+            <div style="font-size: 0.95rem; line-height: 1.6; color: #2f3542;">
+                <ol style="padding-left: 20px;">
+                    <li><strong>Virtueller Ausgang für Steuerbefehle:</strong>
+                        <ul style="margin-top: 4px; margin-bottom: 8px;">
+                            <li>Adresse: <span class="code-payload">/dev/tcp/127.0.0.1/1883</span> (über MQTT Gateway) oder direkt über HTTP/MQTT Ausgang.</li>
+                        </ul>
+                    </li>
+                    <li><strong>Virtueller Ausgangsbefehl (z.B. für Heimkino Ein / Aus):</strong>
+                        <ul style="margin-top: 4px; margin-bottom: 8px;">
+                            <li>Befehl bei EIN: Topic: <span class="code-topic"><?php echo htmlspecialchars($mqtt_topic_prefix); ?>/set/power</span> mit Wert <span class="code-payload">ON</span></li>
+                            <li>Befehl bei AUS: Topic: <span class="code-topic"><?php echo htmlspecialchars($mqtt_topic_prefix); ?>/set/power</span> mit Wert <span class="code-payload">OFF</span></li>
+                        </ul>
+                    </li>
+                    <li><strong>Virtueller Eingang (Status Power):</strong>
+                        <ul style="margin-top: 4px; margin-bottom: 8px;">
+                            <li>In LoxBerry MQTT Gateway das Topic <span class="code-topic"><?php echo htmlspecialchars($mqtt_topic_prefix); ?>/status/power</span> an den Miniserver weiterleiten lassen.</li>
+                            <li>In Loxone Config einen Virtuellen Texteingang mit dem Namen <span class="code-payload"><?php echo htmlspecialchars($mqtt_topic_prefix); ?>_status_power</span> anlegen.</li>
+                        </ul>
+                    </li>
+                </ol>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    function showToast(msg, isError = false) {
+        const toast = document.getElementById('toastMessage');
+        toast.innerText = msg;
+        toast.style.background = isError ? '#eb4d4b' : '#2ed573';
+        toast.style.display = 'block';
+        setTimeout(() => { toast.style.display = 'none'; }, 4000);
+    }
+
+    function testMqtt(type, val) {
+        fetch('ajax.php?action=' + encodeURIComponent(type) + '&cmd=' + encodeURIComponent(val) + '&source=' + encodeURIComponent(val) + '&key=' + encodeURIComponent(val))
+            .then(r => r.json())
+            .then(res => {
+                showToast('Testbefehl gesendet: ' + type + ' -> ' + val);
+            })
+            .catch(err => {
+                showToast('Fehler beim Senden: ' + err, true);
+            });
+    }
+
+    function testWol() {
+        fetch('ajax.php?action=wol')
+            .then(r => r.json())
+            .then(res => {
+                if (res.success) {
+                    showToast('⚡ Wake-on-LAN Magic Packet erfolgreich gesendet!');
+                } else {
+                    showToast('WOL fehlgeschlagen: ' + (res.error || 'Fehler'), true);
+                }
+            });
+    }
+
+    function testHeartbeat() {
+        fetch('ajax.php?action=heartbeat')
+            .then(r => r.json())
+            .then(res => {
+                if (res.success) {
+                    showToast('💓 Heartbeat Ping erfolgreich gesendet!');
+                } else {
+                    showToast('Heartbeat fehlgeschlagen', true);
+                }
+            });
+    }
+    </script>
+    <?php
+    LBWeb::lbfooter();
+    exit;
+}
 
 if ($form === 'logs') {
     ?>
@@ -398,6 +772,7 @@ if ($form === 'logs') {
                 <button type="button" class="remote-btn" onclick="restartDaemon()"><?php echo __t('COMMON.LABEL_RESTART_DAEMON', 'Dienst neu starten'); ?></button>
                 <button type="button" class="remote-btn btn-action-blue" onclick="sendWol()"><?php echo __t('COMMON.LABEL_WOL', '⚡ Wake-on-LAN'); ?></button>
                 <button type="button" class="remote-btn" onclick="sendHeartbeat()"><?php echo __t('COMMON.LABEL_HEARTBEAT', '💓 Heartbeat Ping'); ?></button>
+                <a href="index.php?form=mqtt" class="remote-btn" style="text-decoration:none; display:inline-block;">📖 MQTT SET-Befehle</a>
             </div>
         </div>
 
