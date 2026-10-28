@@ -19,3 +19,29 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+---
+
+### Danksagung & Third-Party Lizenzen
+
+Dieses Plugin basiert auf Konzepten, Protokoll-Analysen und Open-Source-Bibliotheken der folgenden Projekte:
+
+1. **hkavr** (Python):
+   * Autor: Sander Geerts (Devqon)
+   * Repository: https://github.com/Devqon/hkavr
+   * Lizenz: MIT License (Copyright (c) 2018 Sander Geerts)
+
+2. **HKAPI** (PHP):
+   * Autor: Karim Geiger
+   * Repository: https://github.com/KarimGeiger/HKAPI
+   * Lizenz: MIT License (Copyright (c) Karim Geiger)
+
+3. **Eclipse Paho MQTT Python Client** (paho-mqtt):
+   * Projekt: Eclipse Foundation
+   * Repository: https://github.com/eclipse/paho.mqtt.python
+   * Lizenzen: Eclipse Public License v2.0 (EPL-2.0) / Eclipse Distribution License v1.0 (EDL-1.0)
+
+4. **LoxBerry Platform & SDK**:
+   * Projekt: LoxBerry Core Team
+   * Website: https://wiki.loxberry.de/
+   * Lizenz: Apache License 2.0 / GNU General Public License

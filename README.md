@@ -221,8 +221,14 @@ LoxBerry-Plugin-HarmanKardonAVR/
 
 ---
 
-## 📄 Lizenz
+## 📄 Lizenz & Danksagung
 
 Dieses Projekt ist unter der **MIT-Lizenz** lizenziert – siehe die [LICENSE](LICENSE) Datei für Details.
+
+### Verwendete Bibliotheken & Referenzen
+* **[Devqon/hkavr](https://github.com/Devqon/hkavr)** (Python) – MIT License © 2018 Sander Geerts
+* **[KarimGeiger/HKAPI](https://github.com/KarimGeiger/HKAPI)** (PHP) – MIT License © Karim Geiger
+* **[paho-mqtt](https://github.com/eclipse/paho.mqtt.python)** – Eclipse Public License 2.0 / Eclipse Distribution License 1.0 (BSD)
+* **[LoxBerry](https://wiki.loxberry.de/)** – Apache License 2.0 / GNU GPL
 
 *Hinweis: Harman Kardon ist ein eingetragenes Warenzeichen der Harman International Industries. Dieses Projekt steht in keiner offiziellen Verbindung zu Harman Kardon.*
