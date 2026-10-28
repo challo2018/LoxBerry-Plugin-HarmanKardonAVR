@@ -1,0 +1,20 @@
+#!/bin/bash
+# Harman Kardon AVR Watchdog - Checks if daemon is running and restarts if needed
+
+if ! pgrep -f "hkavr_daemon.py" > /dev/null 2>&1; then
+    echo "[harmankardon watchdog] Daemon not running, restarting..."
+    if [ -x "REPLACELBHOMEDIR/system/daemons/plugins/harmankardon" ]; then
+        "REPLACELBHOMEDIR/system/daemons/plugins/harmankardon" start > /dev/null 2>&1 &
+    elif [ -x "REPLACELBHOMEDIR/system/daemons/plugins/daemon.sh" ]; then
+        "REPLACELBHOMEDIR/system/daemons/plugins/daemon.sh" start > /dev/null 2>&1 &
+    elif [ -f "REPLACELBPBINDIR/hkavr_daemon.py" ]; then
+        VENV_PY="REPLACELBPDATADIR/venv/bin/python3"
+        PY="python3"
+        if [ -x "$VENV_PY" ]; then
+            PY="$VENV_PY"
+        fi
+        nohup "$PY" "REPLACELBPBINDIR/hkavr_daemon.py" >> "REPLACELBPLOGDIR/daemon.log" 2>&1 &
+    fi
+fi
+
+exit 0

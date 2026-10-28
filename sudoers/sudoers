@@ -1,0 +1,9 @@
+# sudoers/sudoers - Sudoers rules for Harman Kardon AVR plugin.
+#
+# This file is installed to /etc/sudoers.d/<NAME> during plugin installation.
+# The placeholder REPLACELBPBINDIR is automatically replaced by the installer
+# with the actual path to this plugin's bin/ directory.
+#
+# Harman Kardon AVR control uses direct IP network communication (TCP socket and WOL)
+# and does not require elevated root permissions.
+# %loxberry ALL = NOPASSWD: REPLACELBPBINDIR/hkavr_control.py
