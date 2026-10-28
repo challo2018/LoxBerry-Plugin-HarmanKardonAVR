@@ -77,9 +77,36 @@ def get_log_file() -> str:
 logger = logging.getLogger("hkavr_control")
 logger.setLevel(logging.INFO)
 
+def get_loxberry_plugin_loglevel(plugin_names=("harmankardon", "harmankardonavr")) -> Optional[int]:
+    """Read loglevel configured by the user in the LoxBerry Plugin Management widget."""
+    lb_home = os.environ.get("LBHOMEDIR", "/opt/loxberry")
+    pdb_paths = [
+        os.path.join(lb_home, "data", "system", "plugindatabase.json"),
+        "/opt/loxberry/data/system/plugindatabase.json"
+    ]
+    for p in pdb_paths:
+        if os.path.exists(p):
+            try:
+                with open(p, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                plugins = data.get("plugins") or data
+                if isinstance(plugins, dict):
+                    for k, v in plugins.items():
+                        if isinstance(v, dict):
+                            name = v.get("name") or v.get("folder")
+                            if name in plugin_names:
+                                lvl = v.get("loglevel")
+                                if lvl is not None:
+                                    return int(lvl)
+            except Exception:
+                pass
+    return None
+
+sys_lvl = get_loxberry_plugin_loglevel()
 log_cfg = load_config().get("system", {})
-log_lvl_val = log_cfg.get("loglevel", 6)
+log_lvl_val = sys_lvl if sys_lvl is not None else log_cfg.get("loglevel", 6)
 level_map = {
+    0: logging.CRITICAL,
     1: logging.CRITICAL,
     2: logging.CRITICAL,
     3: logging.ERROR,

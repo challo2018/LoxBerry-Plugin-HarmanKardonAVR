@@ -60,6 +60,17 @@ $poll_active = $config['polling']['interval_active'] ?? 5;
 $poll_standby = $config['polling']['interval_standby'] ?? 30;
 $log_level = $config['system']['loglevel'] ?? 6;
 
+// Query central LoxBerry system loglevel
+if (class_exists('LBSystem') && method_exists('LBSystem', 'pluginloglevel')) {
+    $sys_lvl = LBSystem::pluginloglevel('harmankardon');
+    if ($sys_lvl === false || $sys_lvl === null) {
+        $sys_lvl = LBSystem::pluginloglevel('harmankardonavr');
+    }
+    if ($sys_lvl !== false && $sys_lvl !== null && $sys_lvl >= 0) {
+        $log_level = intval($sys_lvl);
+    }
+}
+
 // Read LoxBerry MQTT Gateway info if function exists
 $lb_mqtt_info = __t('MQTT.LABEL_USE_LB_GATEWAY', 'Integriertes Gateway');
 if (function_exists('mqtt_connectiondetails')) {
@@ -524,11 +535,12 @@ if ($form === 'logs') {
         <div class="card-box">
             <div class="card-header-bar">
                 <h2><?php echo __t('LOGGING.SECTION_TITLE', 'Logdatei & Diagnose'); ?></h2>
-                <div style="display:flex; gap:10px; align-items:center;">
+                <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
                     <label style="font-size:0.9rem; cursor:pointer;">
                         <input type="checkbox" id="autoScroll" checked> <?php echo __t('LOGGING.LABEL_AUTO_SCROLL', 'Auto-Scroll'); ?>
                     </label>
                     <button type="button" class="btn-action" onclick="fetchLogs()"><?php echo __t('LOGGING.BTN_REFRESH', 'Aktualisieren'); ?></button>
+                    <a href="/admin/system/tools/logfile.cgi?package=harmankardon" target="_blank" class="btn-action" style="text-decoration:none; display:inline-flex; align-items:center; gap:5px;">📂 LoxBerry Log Manager</a>
                     <button type="button" class="btn-danger" onclick="clearLogs()"><?php echo __t('LOGGING.BTN_CLEAR_LOG', 'Log leeren'); ?></button>
                 </div>
             </div>
