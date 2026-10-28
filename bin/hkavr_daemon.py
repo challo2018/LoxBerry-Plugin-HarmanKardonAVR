@@ -275,9 +275,12 @@ class HarmanKardonDaemon:
 
         client_id = f"loxberry_harmankardon_{os.getpid()}"
         try:
-            # Check paho-mqtt version 2.0 callback_api_version
             if hasattr(mqtt, "CallbackAPIVersion"):
-                self.mqtt_client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1, client_id=client_id)
+                api_ver = getattr(mqtt.CallbackAPIVersion, "VERSION2", getattr(mqtt.CallbackAPIVersion, "VERSION1", None))
+                if api_ver is not None:
+                    self.mqtt_client = mqtt.Client(api_ver, client_id=client_id)
+                else:
+                    self.mqtt_client = mqtt.Client(client_id=client_id)
             else:
                 self.mqtt_client = mqtt.Client(client_id=client_id)
         except Exception:
@@ -301,8 +304,14 @@ class HarmanKardonDaemon:
         except Exception as e:
             logger.error(f"Failed to connect to MQTT broker: {e}")
 
-    def on_mqtt_connect(self, client, userdata, flags, rc):
-        if rc == 0:
+    def on_mqtt_connect(self, client, userdata, flags, rc, *args, **kwargs):
+        is_failure = False
+        if hasattr(rc, "is_failure"):
+            is_failure = rc.is_failure
+        elif isinstance(rc, int):
+            is_failure = (rc != 0)
+
+        if not is_failure:
             prefix = self.get_topic_prefix()
             logger.info(f"Connected to MQTT broker successfully. Prefix='{prefix}'")
             # Publish daemon online
@@ -314,10 +323,16 @@ class HarmanKardonDaemon:
             # Immediately publish current state
             self.publish_status(force=True)
         else:
-            logger.error(f"MQTT connection refused with code {rc}")
+            logger.error(f"MQTT connection refused by broker: {rc}")
 
-    def on_mqtt_disconnect(self, client, userdata, rc):
-        if rc != 0:
+    def on_mqtt_disconnect(self, client, userdata, *args, **kwargs):
+        rc = args[0] if args else kwargs.get("reason_code", kwargs.get("rc", None))
+        is_error = False
+        if hasattr(rc, "is_failure"):
+            is_error = rc.is_failure
+        elif isinstance(rc, int):
+            is_error = (rc != 0)
+        if is_error:
             logger.warning(f"Unexpected MQTT disconnect (rc={rc}). Will auto-reconnect...")
 
     def on_mqtt_message(self, client, userdata, msg):
