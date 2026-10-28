@@ -26,8 +26,16 @@ function __t($key, $fallback = '') {
 
 // Config file path
 $cfg_file = "$lbpconfigdir/harmankardon.json";
-if (!file_exists($cfg_file)) {
-    $cfg_file = dirname(__DIR__, 2) . "/config/harmankardon.json";
+foreach (['harmankardon.json', 'harmankardonavr.json'] as $f) {
+    if (!empty($lbpconfigdir) && file_exists("$lbpconfigdir/$f")) {
+        $cfg_file = "$lbpconfigdir/$f";
+        break;
+    }
+    $local = dirname(__DIR__, 2) . "/config/$f";
+    if (file_exists($local)) {
+        $cfg_file = $local;
+        break;
+    }
 }
 $config = file_exists($cfg_file) ? json_decode(file_get_contents($cfg_file), true) : [];
 

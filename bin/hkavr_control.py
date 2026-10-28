@@ -19,14 +19,23 @@ import subprocess
 from typing import Optional, Dict, Any, List
 
 def get_config_path() -> str:
+    for folder in ["harmankardon", "harmankardonavr"]:
+        for fname in ["harmankardon.json", "harmankardonavr.json"]:
+            if "LBPCONFIG" in os.environ:
+                cfg = os.path.join(os.environ["LBPCONFIG"], folder, fname)
+                if os.path.exists(cfg):
+                    return cfg
+            lb_home = os.environ.get("LBHOMEDIR", "REPLACELBHOMEDIR")
+            lb_std = os.path.join(lb_home, "config", "plugins", folder, fname)
+            if os.path.exists(lb_std):
+                return lb_std
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            local_cfg = os.path.abspath(os.path.join(script_dir, "..", "config", fname))
+            if os.path.exists(local_cfg):
+                return local_cfg
+    # Fallback default
     if "LBPCONFIG" in os.environ:
-        cfg = os.path.join(os.environ["LBPCONFIG"], "harmankardon", "harmankardon.json")
-        if os.path.exists(cfg):
-            return cfg
-    lb_home = os.environ.get("LBHOMEDIR", "REPLACELBHOMEDIR")
-    lb_std = os.path.join(lb_home, "config", "plugins", "harmankardon", "harmankardon.json")
-    if os.path.exists(lb_std):
-        return lb_std
+        return os.path.join(os.environ["LBPCONFIG"], "harmankardon", "harmankardon.json")
     script_dir = os.path.dirname(os.path.abspath(__file__))
     return os.path.abspath(os.path.join(script_dir, "..", "config", "harmankardon.json"))
 

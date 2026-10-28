@@ -1,0 +1,46 @@
+{
+  "receiver": {
+    "host": "",
+    "port": 10025,
+    "mac": "",
+    "device_type": "AVR",
+    "zone": "Main Zone",
+    "model": "AVR 151S",
+    "keep_alive_enabled": true,
+    "keep_alive_interval": 60
+  },
+  "sources": [
+    "Cable Sat",
+    "Disc",
+    "DVR",
+    "Radio",
+    "TV",
+    "USB",
+    "Game",
+    "Media Server",
+    "Home Network",
+    "AUX"
+  ],
+  "mqtt": {
+    "use_loxberry_gateway": true,
+    "broker_host": "localhost",
+    "broker_port": 1883,
+    "broker_user": "",
+    "broker_pass": "",
+    "topic_prefix": "harmankardon"
+  },
+  "polling": {
+    "enabled": true,
+    "interval_active": 5,
+    "interval_standby": 30
+  },
+  "state": {
+    "volume_estimate": 35,
+    "mute": false,
+    "power": "OFF",
+    "source": "TV"
+  },
+  "system": {
+    "loglevel": 6
+  }
+}

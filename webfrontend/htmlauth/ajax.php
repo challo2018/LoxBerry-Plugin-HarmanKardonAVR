@@ -23,15 +23,23 @@ require_once "loxberry_io.php";
 
 function get_plugin_config_file() {
     global $lbpconfigdir;
-    if (!empty($lbpconfigdir) && file_exists("$lbpconfigdir/harmankardon.json")) {
-        return "$lbpconfigdir/harmankardon.json";
+    foreach (['harmankardon', 'harmankardonavr'] as $dir) {
+        foreach (['harmankardon.json', 'harmankardonavr.json'] as $f) {
+            if (!empty($lbpconfigdir) && file_exists("$lbpconfigdir/$f")) {
+                return "$lbpconfigdir/$f";
+            }
+            $lb_home = getenv('LBHOMEDIR') ?: 'REPLACELBHOMEDIR';
+            $std = "$lb_home/config/plugins/$dir/$f";
+            if (file_exists($std)) {
+                return $std;
+            }
+            $local = dirname(__DIR__, 2) . "/config/$f";
+            if (file_exists($local)) {
+                return $local;
+            }
+        }
     }
-    $lb_home = getenv('LBHOMEDIR') ?: 'REPLACELBHOMEDIR';
-    $std = "$lb_home/config/plugins/harmankardon/harmankardon.json";
-    if (file_exists($std)) {
-        return $std;
-    }
-    return dirname(__DIR__, 2) . "/config/harmankardon.json";
+    return !empty($lbpconfigdir) ? "$lbpconfigdir/harmankardon.json" : (dirname(__DIR__, 2) . "/config/harmankardon.json");
 }
 
 function get_log_file_path() {
