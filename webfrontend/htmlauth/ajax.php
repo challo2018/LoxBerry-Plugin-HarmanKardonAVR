@@ -145,7 +145,17 @@ $action = isset($_REQUEST['action']) ? trim($_REQUEST['action']) : '';
 
 switch ($action) {
     case 'status':
-        $res = run_control_cli("--status");
+        $args = "--status";
+        if (!empty($_REQUEST['host'])) {
+            $args .= " --host " . escapeshellarg(trim($_REQUEST['host']));
+        }
+        if (!empty($_REQUEST['port'])) {
+            $args .= " --port " . escapeshellarg(intval($_REQUEST['port']));
+        }
+        if (!empty($_REQUEST['type'])) {
+            $args .= " --type " . escapeshellarg(trim($_REQUEST['type']));
+        }
+        $res = run_control_cli($args);
         $daemon_running = is_daemon_running();
         $res['daemon_running'] = $daemon_running;
         echo json_encode($res);

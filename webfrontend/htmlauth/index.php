@@ -540,7 +540,6 @@ if ($form === 'logs') {
                         <input type="checkbox" id="autoScroll" checked> <?php echo __t('LOGGING.LABEL_AUTO_SCROLL', 'Auto-Scroll'); ?>
                     </label>
                     <button type="button" class="btn-action" onclick="fetchLogs()"><?php echo __t('LOGGING.BTN_REFRESH', 'Aktualisieren'); ?></button>
-                    <a href="/admin/system/tools/logfile.cgi?package=harmankardon" target="_blank" class="btn-action" style="text-decoration:none; display:inline-flex; align-items:center; gap:5px;">📂 LoxBerry Log Manager</a>
                     <button type="button" class="btn-danger" onclick="clearLogs()"><?php echo __t('LOGGING.BTN_CLEAR_LOG', 'Log leeren'); ?></button>
                 </div>
             </div>
@@ -748,7 +747,7 @@ if ($form === 'logs') {
         <div class="card-box">
             <div class="card-header-bar">
                 <h2><?php echo __t('COMMON.LABEL_STATUS', 'Status'); ?></h2>
-                <button type="button" class="remote-btn" style="padding:6px 12px; font-size:0.85rem;" onclick="checkStatus()">
+                <button type="button" class="remote-btn" style="padding:6px 12px; font-size:0.85rem;" onclick="checkStatus(true)">
                     🔄 <?php echo __t('COMMON.LABEL_TEST', 'Aktualisieren'); ?>
                 </button>
             </div>
@@ -970,13 +969,14 @@ if ($form === 'logs') {
                 </div>
             </div>
 
-            <div style="margin-top: 25px; border-top: 1px solid #eee; padding-top: 18px; display: flex; gap: 12px;">
+            <div style="margin-top: 25px; border-top: 1px solid #eee; padding-top: 18px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
                 <button type="submit" class="remote-btn btn-power-on" style="padding: 12px 28px; font-size: 1rem;">
                     💾 <?php echo __t('COMMON.LABEL_SAVE', 'Speichern'); ?>
                 </button>
-                <button type="button" class="remote-btn" onclick="checkStatus()">
+                <button type="button" id="btnTestConn" class="remote-btn" onclick="testConnection()">
                     🔍 <?php echo __t('COMMON.LABEL_TEST', 'Verbindung testen'); ?>
                 </button>
+                <span id="testConnResult" style="font-size: 0.92rem; font-weight: 600; display: none;"></span>
             </div>
         </form>
     </div>
@@ -1000,45 +1000,124 @@ document.getElementById('rcvKeepalive').addEventListener('change', function() {
     document.getElementById('rowKeepaliveInterval').style.display = this.checked ? 'block' : 'none';
 });
 
-function checkStatus() {
+function updateStatusUI(data) {
+    if (!data) return;
+    const bOnline = document.getElementById('badgeOnline');
+    if (bOnline) {
+        if (data.online) {
+            bOnline.innerText = 'Eingeschaltet / Online';
+            bOnline.className = 'status-badge badge-online';
+        } else {
+            bOnline.innerText = 'Offline / Standby';
+            bOnline.className = 'status-badge badge-offline';
+        }
+    }
+
+    const bDaemon = document.getElementById('badgeDaemon');
+    if (bDaemon) {
+        if (data.daemon_running) {
+            bDaemon.innerText = 'Läuft';
+            bDaemon.className = 'status-badge badge-online';
+        } else {
+            bDaemon.innerText = 'Gestoppt';
+            bDaemon.className = 'status-badge badge-stopped';
+        }
+    }
+
+    if (document.getElementById('valPower')) document.getElementById('valPower').innerText = data.power || '-';
+    if (document.getElementById('valSource')) document.getElementById('valSource').innerText = data.source || '-';
+    if (document.getElementById('valVolume')) document.getElementById('valVolume').innerText = (data.volume_estimate !== undefined) ? data.volume_estimate : '-';
+    if (document.getElementById('valMute')) document.getElementById('valMute').innerText = data.mute ? 'JA (Stumm)' : 'Nein';
+    if (data.zone && document.getElementById('valZone')) document.getElementById('valZone').innerText = data.zone;
+
+    // Mark active source button
+    document.querySelectorAll('.source-btn').forEach(btn => {
+        if (btn.innerText.trim() === (data.source || '').trim()) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    });
+}
+
+function checkStatus(manual = false) {
     fetch('ajax.php?action=status')
         .then(r => r.json())
         .then(data => {
-            const bOnline = document.getElementById('badgeOnline');
-            if (data.online) {
-                bOnline.innerText = 'Eingeschaltet';
-                bOnline.className = 'status-badge badge-online';
-            } else {
-                bOnline.innerText = 'Offline / Standby';
-                bOnline.className = 'status-badge badge-offline';
-            }
-
-            const bDaemon = document.getElementById('badgeDaemon');
-            if (data.daemon_running) {
-                bDaemon.innerText = 'Läuft';
-                bDaemon.className = 'status-badge badge-online';
-            } else {
-                bDaemon.innerText = 'Gestoppt';
-                bDaemon.className = 'status-badge badge-stopped';
-            }
-
-            document.getElementById('valPower').innerText = data.power || '-';
-            document.getElementById('valSource').innerText = data.source || '-';
-            document.getElementById('valVolume').innerText = (data.volume_estimate !== undefined) ? data.volume_estimate : '-';
-            document.getElementById('valMute').innerText = data.mute ? 'JA (Stumm)' : 'Nein';
-            if (data.zone) document.getElementById('valZone').innerText = data.zone;
-
-            // Mark active source button
-            document.querySelectorAll('.source-btn').forEach(btn => {
-                if (btn.innerText.trim() === (data.source || '').trim()) {
-                    btn.classList.add('active');
+            updateStatusUI(data);
+            if (manual) {
+                if (data.online) {
+                    showToast('✅ Status aktualisiert: Receiver ist ONLINE (' + (data.host || '') + ')');
                 } else {
-                    btn.classList.remove('active');
+                    showToast('ℹ️ Status aktualisiert: Receiver ist STANDBY / OFFLINE');
                 }
-            });
+            }
         })
         .catch(err => {
-            showToast('Fehler bei Statusabfrage: ' + err, true);
+            if (manual) showToast('Fehler bei Statusabfrage: ' + err, true);
+        });
+}
+
+function testConnection() {
+    const hostInput = document.getElementById('rcvHost');
+    const portInput = document.getElementById('rcvPort');
+    const typeInput = document.getElementById('rcvType');
+    const host = hostInput ? hostInput.value.trim() : '';
+    const port = portInput ? portInput.value.trim() || 10025 : 10025;
+    const type = typeInput ? typeInput.value : 'AVR';
+    const btn = document.getElementById('btnTestConn');
+    const resultBox = document.getElementById('testConnResult');
+
+    if (!host) {
+        showToast('Bitte zuerst eine IP-Adresse oder einen Hostnamen eingeben.', true);
+        if (resultBox) {
+            resultBox.style.display = 'inline-block';
+            resultBox.style.color = '#eb4d4b';
+            resultBox.innerText = '⚠️ Bitte zuerst eine IP-Adresse eintragen!';
+        }
+        return;
+    }
+
+    if (btn) {
+        btn.disabled = true;
+        btn.innerText = '⏳ Prüfe...';
+    }
+    if (resultBox) {
+        resultBox.style.display = 'inline-block';
+        resultBox.style.color = '#0984e3';
+        resultBox.innerText = '⏳ Teste Verbindung zu ' + host + ':' + port + '...';
+    }
+
+    fetch('ajax.php?action=status&host=' + encodeURIComponent(host) + '&port=' + encodeURIComponent(port) + '&type=' + encodeURIComponent(type))
+        .then(r => r.json())
+        .then(data => {
+            updateStatusUI(data);
+            if (data.online) {
+                showToast('✅ Verbindung erfolgreich! Receiver ist online (' + host + ':' + port + ')');
+                if (resultBox) {
+                    resultBox.style.color = '#2ed573';
+                    resultBox.innerText = '✅ Verbunden! Receiver ist erreichbar (Port ' + port + ' offen).';
+                }
+            } else {
+                showToast('❌ Keine Verbindung zu ' + host + ':' + port + ' (Gerät offline oder im Standby)', true);
+                if (resultBox) {
+                    resultBox.style.color = '#eb4d4b';
+                    resultBox.innerText = '❌ Nicht erreichbar unter ' + host + ':' + port + ' (Standby, WOL nötig oder IP prüfen).';
+                }
+            }
+        })
+        .catch(err => {
+            showToast('Fehler beim Verbindungstest: ' + err, true);
+            if (resultBox) {
+                resultBox.style.color = '#eb4d4b';
+                resultBox.innerText = '❌ Fehler: ' + err;
+            }
+        })
+        .finally(() => {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerText = '🔍 <?php echo __t('COMMON.LABEL_TEST', 'Verbindung testen'); ?>';
+            }
         });
 }
 
